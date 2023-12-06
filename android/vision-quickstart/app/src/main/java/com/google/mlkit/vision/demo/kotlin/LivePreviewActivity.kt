@@ -31,12 +31,14 @@ import android.widget.Toast
 import android.widget.ToggleButton
 import com.google.android.gms.common.annotation.KeepName
 import com.google.mlkit.common.model.LocalModel
+import com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback
 import com.google.mlkit.vision.demo.CameraSource
 import com.google.mlkit.vision.demo.CameraSourcePreview
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.R
 import com.google.mlkit.vision.demo.kotlin.barcodescanner.BarcodeScannerProcessor
 import com.google.mlkit.vision.demo.kotlin.facedetector.FaceDetectorProcessor
+import com.google.mlkit.vision.demo.kotlin.facemeshdetector.FaceMeshDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.labeldetector.LabelDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.objectdetector.ObjectDetectorProcessor
 import com.google.mlkit.vision.demo.kotlin.posedetector.PoseDetectorProcessor
@@ -53,7 +55,6 @@ import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.IOException
-import java.util.ArrayList
 
 /** Live preview demo for ML Kit APIs. */
 @KeepName
@@ -97,6 +98,7 @@ class LivePreviewActivity :
     options.add(TEXT_RECOGNITION_DEVANAGARI)
     options.add(TEXT_RECOGNITION_JAPANESE)
     options.add(TEXT_RECOGNITION_KOREAN)
+    options.add(FACE_MESH_DETECTION)
 
     // Creating adapter for spinner
     val dataAdapter = ArrayAdapter(this, R.layout.spinner_style, options)
@@ -224,7 +226,13 @@ class LivePreviewActivity :
         }
         BARCODE_SCANNING -> {
           Log.i(TAG, "Using Barcode Detector Processor")
-          cameraSource!!.setMachineLearningFrameProcessor(BarcodeScannerProcessor(this))
+          var zoomCallback: ZoomCallback? = null
+          if (PreferenceUtils.shouldEnableAutoZoom(this)) {
+            zoomCallback = ZoomCallback { zoomLevel: Float -> cameraSource!!.setZoom(zoomLevel) }
+          }
+          cameraSource!!.setMachineLearningFrameProcessor(
+            BarcodeScannerProcessor(this, zoomCallback)
+          )
         }
         IMAGE_LABELING -> {
           Log.i(TAG, "Using Image Label Detector Processor")
@@ -275,6 +283,9 @@ class LivePreviewActivity :
         }
         SELFIE_SEGMENTATION -> {
           cameraSource!!.setMachineLearningFrameProcessor(SegmenterProcessor(this))
+        }
+        FACE_MESH_DETECTION -> {
+          cameraSource!!.setMachineLearningFrameProcessor(FaceMeshDetectorProcessor(this))
         }
         else -> Log.e(TAG, "Unknown model: $model")
       }
@@ -348,6 +359,7 @@ class LivePreviewActivity :
     private const val CUSTOM_AUTOML_LABELING = "Custom AutoML Image Labeling (Flower)"
     private const val POSE_DETECTION = "Pose Detection"
     private const val SELFIE_SEGMENTATION = "Selfie Segmentation"
+    private const val FACE_MESH_DETECTION = "Face Mesh Detection (Beta)"
 
     private const val TAG = "LivePreviewActivity"
   }

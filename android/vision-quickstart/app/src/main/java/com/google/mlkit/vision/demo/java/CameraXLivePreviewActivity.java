@@ -34,6 +34,7 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.camera.core.Camera;
 import androidx.camera.core.CameraInfoUnavailableException;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -44,14 +45,17 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory;
 import com.google.android.gms.common.annotation.KeepName;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.common.MlKitException;
 import com.google.mlkit.common.model.LocalModel;
+import com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback;
 import com.google.mlkit.vision.demo.CameraXViewModel;
 import com.google.mlkit.vision.demo.GraphicOverlay;
 import com.google.mlkit.vision.demo.R;
 import com.google.mlkit.vision.demo.VisionImageProcessor;
 import com.google.mlkit.vision.demo.java.barcodescanner.BarcodeScannerProcessor;
 import com.google.mlkit.vision.demo.java.facedetector.FaceDetectorProcessor;
+import com.google.mlkit.vision.demo.java.facemeshdetector.FaceMeshDetectorProcessor;
 import com.google.mlkit.vision.demo.java.labeldetector.LabelDetectorProcessor;
 import com.google.mlkit.vision.demo.java.objectdetector.ObjectDetectorProcessor;
 import com.google.mlkit.vision.demo.java.posedetector.PoseDetectorProcessor;
@@ -91,10 +95,11 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
   private static final String POSE_DETECTION = "Pose Detection";
   private static final String SELFIE_SEGMENTATION = "Selfie Segmentation";
   private static final String TEXT_RECOGNITION_LATIN = "Text Recognition Latin";
-  private static final String TEXT_RECOGNITION_CHINESE = "Text Recognition Chinese (Beta)";
-  private static final String TEXT_RECOGNITION_DEVANAGARI = "Text Recognition Devanagari (Beta)";
-  private static final String TEXT_RECOGNITION_JAPANESE = "Text Recognition Japanese (Beta)";
-  private static final String TEXT_RECOGNITION_KOREAN = "Text Recognition Korean (Beta)";
+  private static final String TEXT_RECOGNITION_CHINESE = "Text Recognition Chinese";
+  private static final String TEXT_RECOGNITION_DEVANAGARI = "Text Recognition Devanagari";
+  private static final String TEXT_RECOGNITION_JAPANESE = "Text Recognition Japanese";
+  private static final String TEXT_RECOGNITION_KOREAN = "Text Recognition Korean";
+  private static final String FACE_MESH_DETECTION = "Face Mesh Detection (Beta)";
 
   private static final String STATE_SELECTED_MODEL = "selected_model";
 
@@ -102,6 +107,7 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
   private GraphicOverlay graphicOverlay;
 
   @Nullable private ProcessCameraProvider cameraProvider;
+  @Nullable private Camera camera;
   @Nullable private Preview previewUseCase;
   @Nullable private ImageAnalysis analysisUseCase;
   @Nullable private VisionImageProcessor imageProcessor;
@@ -148,6 +154,7 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
     options.add(TEXT_RECOGNITION_DEVANAGARI);
     options.add(TEXT_RECOGNITION_JAPANESE);
     options.add(TEXT_RECOGNITION_KOREAN);
+    options.add(FACE_MESH_DETECTION);
 
     // Creating adapter for spinner
     ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(this, R.layout.spinner_style, options);
@@ -279,7 +286,8 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
     }
     previewUseCase = builder.build();
     previewUseCase.setSurfaceProvider(previewView.getSurfaceProvider());
-    cameraProvider.bindToLifecycle(/* lifecycleOwner= */ this, cameraSelector, previewUseCase);
+    camera =
+        cameraProvider.bindToLifecycle(/* lifecycleOwner= */ this, cameraSelector, previewUseCase);
   }
 
   private void bindAnalysisUseCase() {
@@ -354,7 +362,18 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
           break;
         case BARCODE_SCANNING:
           Log.i(TAG, "Using Barcode Detector Processor");
-          imageProcessor = new BarcodeScannerProcessor(this);
+          ZoomCallback zoomCallback = null;
+          if (PreferenceUtils.shouldEnableAutoZoom(this)) {
+            zoomCallback =
+                zoomLevel -> {
+                  Log.i(TAG, "Set zoom ratio " + zoomLevel);
+                  @SuppressWarnings("FutureReturnValueIgnored")
+                  ListenableFuture<Void> ignored =
+                      camera.getCameraControl().setZoomRatio(zoomLevel);
+                  return true;
+                };
+          }
+          imageProcessor = new BarcodeScannerProcessor(this, zoomCallback);
           break;
         case IMAGE_LABELING:
           Log.i(TAG, "Using Image Label Detector Processor");
@@ -400,6 +419,9 @@ public final class CameraXLivePreviewActivity extends AppCompatActivity
           break;
         case SELFIE_SEGMENTATION:
           imageProcessor = new SegmenterProcessor(this);
+          break;
+        case FACE_MESH_DETECTION:
+          imageProcessor = new FaceMeshDetectorProcessor(this);
           break;
         default:
           throw new IllegalStateException("Invalid model name");

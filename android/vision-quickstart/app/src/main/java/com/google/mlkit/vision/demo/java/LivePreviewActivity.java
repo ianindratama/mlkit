@@ -31,12 +31,14 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 import com.google.android.gms.common.annotation.KeepName;
 import com.google.mlkit.common.model.LocalModel;
+import com.google.mlkit.vision.barcode.ZoomSuggestionOptions.ZoomCallback;
 import com.google.mlkit.vision.demo.CameraSource;
 import com.google.mlkit.vision.demo.CameraSourcePreview;
 import com.google.mlkit.vision.demo.GraphicOverlay;
 import com.google.mlkit.vision.demo.R;
 import com.google.mlkit.vision.demo.java.barcodescanner.BarcodeScannerProcessor;
 import com.google.mlkit.vision.demo.java.facedetector.FaceDetectorProcessor;
+import com.google.mlkit.vision.demo.java.facemeshdetector.FaceMeshDetectorProcessor;
 import com.google.mlkit.vision.demo.java.labeldetector.LabelDetectorProcessor;
 import com.google.mlkit.vision.demo.java.objectdetector.ObjectDetectorProcessor;
 import com.google.mlkit.vision.demo.java.posedetector.PoseDetectorProcessor;
@@ -74,10 +76,11 @@ public final class LivePreviewActivity extends AppCompatActivity
   private static final String POSE_DETECTION = "Pose Detection";
   private static final String SELFIE_SEGMENTATION = "Selfie Segmentation";
   private static final String TEXT_RECOGNITION_LATIN = "Text Recognition Latin";
-  private static final String TEXT_RECOGNITION_CHINESE = "Text Recognition Chinese (Beta)";
-  private static final String TEXT_RECOGNITION_DEVANAGARI = "Text Recognition Devanagari (Beta)";
-  private static final String TEXT_RECOGNITION_JAPANESE = "Text Recognition Japanese (Beta)";
-  private static final String TEXT_RECOGNITION_KOREAN = "Text Recognition Korean (Beta)";
+  private static final String TEXT_RECOGNITION_CHINESE = "Text Recognition Chinese";
+  private static final String TEXT_RECOGNITION_DEVANAGARI = "Text Recognition Devanagari";
+  private static final String TEXT_RECOGNITION_JAPANESE = "Text Recognition Japanese";
+  private static final String TEXT_RECOGNITION_KOREAN = "Text Recognition Korean";
+  private static final String FACE_MESH_DETECTION = "Face Mesh Detection (Beta)";
 
   private static final String TAG = "LivePreviewActivity";
 
@@ -119,6 +122,7 @@ public final class LivePreviewActivity extends AppCompatActivity
     options.add(TEXT_RECOGNITION_DEVANAGARI);
     options.add(TEXT_RECOGNITION_JAPANESE);
     options.add(TEXT_RECOGNITION_KOREAN);
+    options.add(FACE_MESH_DETECTION);
 
     // Creating adapter for spinner
     ArrayAdapter<String> dataAdapter = new ArrayAdapter<>(this, R.layout.spinner_style, options);
@@ -244,7 +248,12 @@ public final class LivePreviewActivity extends AppCompatActivity
           break;
         case BARCODE_SCANNING:
           Log.i(TAG, "Using Barcode Detector Processor");
-          cameraSource.setMachineLearningFrameProcessor(new BarcodeScannerProcessor(this));
+          ZoomCallback zoomCallback = null;
+          if (PreferenceUtils.shouldEnableAutoZoom(this)) {
+            zoomCallback = zoomLevel -> cameraSource.setZoom(zoomLevel);
+          }
+          cameraSource.setMachineLearningFrameProcessor(
+              new BarcodeScannerProcessor(this, zoomCallback));
           break;
         case IMAGE_LABELING:
           Log.i(TAG, "Using Image Label Detector Processor");
@@ -294,6 +303,9 @@ public final class LivePreviewActivity extends AppCompatActivity
           break;
         case SELFIE_SEGMENTATION:
           cameraSource.setMachineLearningFrameProcessor(new SegmenterProcessor(this));
+          break;
+        case FACE_MESH_DETECTION:
+          cameraSource.setMachineLearningFrameProcessor(new FaceMeshDetectorProcessor(this));
           break;
         default:
           Log.e(TAG, "Unknown model: " + model);

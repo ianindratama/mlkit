@@ -31,6 +31,7 @@ import com.google.mlkit.vision.demo.CameraSource;
 import com.google.mlkit.vision.demo.CameraSource.SizePair;
 import com.google.mlkit.vision.demo.R;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
+import com.google.mlkit.vision.facemesh.FaceMeshDetectorOptions;
 import com.google.mlkit.vision.objects.ObjectDetectorOptionsBase.DetectorMode;
 import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions;
 import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions;
@@ -279,6 +280,12 @@ public class PreferenceUtils {
     }
   }
 
+  public static boolean shouldEnableAutoZoom(Context context) {
+    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+    String prefKey = context.getString(R.string.pref_key_enable_auto_zoom);
+    return sharedPreferences.getBoolean(prefKey, true);
+  }
+
   public static boolean shouldGroupRecognizedTextInBlocks(Context context) {
     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     String prefKey = context.getString(R.string.pref_key_group_recognized_text_in_blocks);
@@ -288,6 +295,12 @@ public class PreferenceUtils {
   public static boolean showLanguageTag(Context context) {
     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     String prefKey = context.getString(R.string.pref_key_show_language_tag);
+    return sharedPreferences.getBoolean(prefKey, false);
+  }
+
+  public static boolean shouldShowTextConfidence(Context context) {
+    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+    String prefKey = context.getString(R.string.pref_key_show_text_confidence);
     return sharedPreferences.getBoolean(prefKey, false);
   }
 
@@ -351,6 +364,13 @@ public class PreferenceUtils {
     SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
     String prefKey = context.getString(R.string.pref_key_camera_live_viewport);
     return sharedPreferences.getBoolean(prefKey, false);
+  }
+
+  public static int getFaceMeshUseCase(Context context) {
+    SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+    String prefKey = context.getString(R.string.pref_key_face_mesh_use_case);
+    return Integer.parseInt(
+        sharedPreferences.getString(prefKey, String.valueOf(FaceMeshDetectorOptions.FACE_MESH)));
   }
 
   private PreferenceUtils() {}
